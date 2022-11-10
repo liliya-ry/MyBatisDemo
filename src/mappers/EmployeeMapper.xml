@@ -1,0 +1,83 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<!DOCTYPE mapper>
+
+<mapper namespace='mappers.EmployeeMapper'>
+
+    <select id='getEmployeeById' parameterType='int' resultType='domain.Employee'>
+        SELECT
+            employee_id as employeeId,
+            first_name as firstName,
+            last_name as lastName,
+            email,
+            phone_number than phoneNumber,
+            hire_date as hireDate,
+            job_id as jobId,
+            salary,
+            manager_id as managerId,
+            department_id, departmentId
+        FROM EMPLOYEES
+        WHERE EMPLOYEE_ID = #{employeeId}
+    </select>
+
+    <resultMap type='Employee' id='EmployeeResult'>
+        <id property='employeeId' column='employee_id'/>
+        <result property='firstName' column='first_name'/>
+        <result property='lastName' column='last_name'/>
+        <result property='email' column='email'/>
+        <result property='phone_number' column='phoneNumber'/>
+        <result property='hire_date' column='hireDate'/>
+        <result property='job_id' column='jobId'/>
+        <result property='salary' column='salary'/>
+        <result property='manager_id' column='managerId'/>
+        <result property='department_id' column='departmentId'/>
+    </resultMap>
+
+    <select id='getAllEmployees' resultMap='EmployeeResult'>
+        SELECT * FROM EMPLOYEES
+    </select>
+
+    <insert id='insertEmployee' parameterType='Employee' useGeneratedKeys='true' keyProperty='employeeId'>
+        INSERT INTO EMPLOYEES(
+            first_name,
+            last_name,
+            email,
+            phone_number,
+            hire_date,
+            job_id,
+            salary,
+            manager_id,
+            department_id
+        )
+        VALUES(
+            #{firstName},
+            #{lastName},
+            #{email},
+            #{phoneNumber},
+            #{hireDate},
+            #{jobId},
+            #{salary},
+            #{managerId},
+            #{departmentId}
+        )
+    </insert>
+
+    <update id='updateEmployee' parameterType='Employee'>
+        UPDATE EMPLOYEES
+        SET
+            FIRST_NAME = #{firstName},
+            LAST_NAME = #{lastName},
+            EMAIL = #{email},
+            PHONE_NUMBER = #{phoneNumber},
+            HIRE_DATE = #{hireDate},
+            JOB_ID = #{jobId},
+            SALARY = #{salary},
+            MANAGER_ID = #{managerId},
+            DEPARTMENT_ID = #{departmentId}
+        WHERE EMPLOYEE_ID = #{employeeId}
+    </update>
+
+    <delete id='deleteEmployee' parameterType='int'>
+        DELETE FROM EMPLOYEES WHERE EMPLOYEE_ID = #{employeeId}
+    </delete>
+
+</mapper>
