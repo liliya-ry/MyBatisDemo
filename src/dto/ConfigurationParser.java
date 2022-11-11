@@ -494,7 +494,6 @@ public class ConfigurationParser {
         return new SelectQuery(Query.QUERY_TYPE.SELECT, id, paramType, sql, resultType, resultMapId);
     }
 
-
     private static final Map<String, Class<?>> PRIMITIVE_CLASSES = Map.of(
             "int", int.class,
             "float", float.class,

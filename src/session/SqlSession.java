@@ -45,7 +45,7 @@ public class SqlSession implements Closeable {
     }
 
 
-    //    <T> T selectOne(String statement, Object parameter);
+//        <T> T selectOne(String statement, Object parameter);
 //    <E> List<E> selectList(String statement, Object parameter);
 //    <K,V> Map<K,V> selectMap(String statement, Object parameter, String mapKey);
 //    <T> Cursor selectCursor(String statement, Object parameter);
