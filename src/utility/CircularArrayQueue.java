@@ -1,4 +1,4 @@
-package circular_array;
+package utility;
 
 import java.util.*;
 

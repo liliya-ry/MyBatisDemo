@@ -5,13 +5,13 @@ import domain.Employee;
 import java.util.List;
 
 public interface EmployeeMapper {
-    public Employee getEmployeeById(Integer employeeId);
+    Employee getEmployeeById(Integer employeeId);
 
-    public List<Employee> getAllEmployees();
+    List<Employee> getAllEmployees();
 
-    public void insertEmployee(Employee employee);
+    void insertEmployee(Employee employee);
 
-    public void updateEmployee(Employee employee);
+    void updateEmployee(Employee employee);
 
-    public void deleteEmployee(Integer employeeId);
+    void deleteEmployee(Integer employeeId);
 }

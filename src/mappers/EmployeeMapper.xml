@@ -5,16 +5,16 @@
 
     <select id='getEmployeeById' parameterType='int' resultType='domain.Employee'>
         SELECT
-            employee_id as employeeId,
-            first_name as firstName,
-            last_name as lastName,
-            email,
-            phone_number than phoneNumber,
-            hire_date as hireDate,
-            job_id as jobId,
-            salary,
-            manager_id as managerId,
-            department_id, departmentId
+        employee_id,
+        first_name,
+        last_name,
+        email,
+        phone_number,
+        hire_date,
+        job_id,
+        salary,
+        manager_id,
+        department_id
         FROM EMPLOYEES
         WHERE EMPLOYEE_ID = #{employeeId}
     </select>

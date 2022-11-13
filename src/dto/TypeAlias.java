@@ -1,11 +1,19 @@
 package dto;
 
 public class TypeAlias {
-    public Class<?> type;
-    public String alias;
+    Class<?> type;
+    String alias;
 
-    TypeAlias(Class<?> type, String alias) {
+    public TypeAlias(Class<?> type, String alias) {
         this.type = type;
         this.alias = alias;
+    }
+
+    public String getAlias() {
+        return alias;
+    }
+
+    public Class<?> getType() {
+        return type;
     }
 }

@@ -1,8 +1,8 @@
-package dto;
+package dto.queries;
 
 public class InsertQuery extends Query {
-    public boolean useGeneratedKeys;
-    public String keyProperty;
+    boolean useGeneratedKeys;
+    String keyProperty;
 
     public InsertQuery(QUERY_TYPE queryType,
                        String id,
@@ -15,11 +15,11 @@ public class InsertQuery extends Query {
         this.keyProperty = keyProperty;
     }
 
-    @Override
-    public String toString() {
-        return "InsertQuery{" +
-                "useGeneratedKeys=" + useGeneratedKeys +
-                ", keyProperty='" + keyProperty + '\'' +
-                '}';
+    public boolean isUseGeneratedKeys() {
+        return useGeneratedKeys;
+    }
+
+    public String getKeyProperty() {
+        return keyProperty;
     }
 }

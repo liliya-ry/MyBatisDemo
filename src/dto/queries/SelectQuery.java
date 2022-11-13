@@ -1,8 +1,8 @@
-package dto;
+package dto.queries;
 
 public class SelectQuery extends Query {
-    public Class<?> resultType;
-    public String resultMapId;
+    Class<?> resultType;
+    String resultMapId;
 
 
     public SelectQuery(QUERY_TYPE queryType,
@@ -14,6 +14,10 @@ public class SelectQuery extends Query {
         super(queryType, id, parameterType, sql);
         this.resultType = resultType;
         this.resultMapId = resultMapId;
+    }
+
+    public Class<?> getResultType() {
+        return resultType;
     }
 
     @Override

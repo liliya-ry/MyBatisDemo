@@ -49,6 +49,26 @@ public class Employee {
         this.managerId = managerId;
     }
 
+    public Employee(String firstName,
+                    String lastName,
+                    String email,
+                    String phone,
+                    Date hireDate,
+                    BigDecimal salary,
+                    int jobId,
+                    int departmentId,
+                    int managerId) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.phoneNumber = phone;
+        this.hireDate = hireDate;
+        this.salary = salary;
+        this.jobId = jobId;
+        this.departmentId = departmentId;
+        this.managerId = managerId;
+    }
+
     @Override
     public String toString() {
         return "Employee{" +

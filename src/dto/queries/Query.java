@@ -1,4 +1,4 @@
-package dto;
+package dto.queries;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,11 +9,11 @@ public class Query {
     private static final Pattern PARAM_PATTERN = Pattern.compile("\\#\\{([\\w\\d]+)\\}");
     public enum QUERY_TYPE { SELECT, INSERT, UPDATE, DELETE }
 
-    public QUERY_TYPE queryType;
-    public String id;
-    public Class<?> parameterType;
-    public String sql;
-    public List<String> paramNames;
+    QUERY_TYPE queryType;
+    String id;
+    Class<?> parameterType;
+    String sql;
+    List<String> paramNames;
 
     public Query(QUERY_TYPE queryType, String id, Class<?> parameterType, String sql) {
         this.queryType = queryType;
@@ -49,14 +49,23 @@ public class Query {
         return sb.toString();
     }
 
-    @Override
-    public String toString() {
-        return "Query{" +
-                "queryType=" + queryType +
-                ", id='" + id + '\'' +
-                ", parameterType=" + parameterType +
-                ", sql='" + sql + '\'' +
-                ", paramNames=" + paramNames.toString() +
-                '}';
+    public QUERY_TYPE getQueryType() {
+        return queryType;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getSql() {
+        return sql;
+    }
+
+    public List<String> getParamNames() {
+        return paramNames;
+    }
+
+    public Class<?> getParameterType() {
+        return parameterType;
     }
 }
