@@ -7,9 +7,13 @@ import handlers.DaoHandlerAnnotated;
 import utility.DatabaseConnectionPool;
 
 import java.io.Closeable;
-import java.lang.reflect.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Proxy;
 import java.sql.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 public class SqlSession implements Closeable {
     private final DatabaseConnectionPool dcp;
@@ -31,7 +35,7 @@ public class SqlSession implements Closeable {
         return selectOne(selectQuery, params);
     }
 
-    private <T> T selectOne(SelectQuery selectQuery, Object params) throws Exception {
+    public  <T> T selectOne(SelectQuery selectQuery, Object params) throws Exception {
         Class<?> paramType = selectQuery.getParameterType();
         if (!paramType.equals(params.getClass())) {
             throw new Exception("wrong parameter type");
@@ -114,7 +118,7 @@ public class SqlSession implements Closeable {
         return update(updateQuery, params);
     }
 
-    private int update(UpdateQuery updateQuery, Object params) throws Exception {
+    public int update(UpdateQuery updateQuery, Object params) throws Exception {
         return updateQuery.isUseGeneratedKeys() ?
                 executeQueryWithGeneratedKeys(updateQuery, params, updateQuery.getKeyProperty()) :
                 executeQuery(updateQuery, params);
@@ -126,7 +130,7 @@ public class SqlSession implements Closeable {
         return delete(deleteQuery, params);
     }
 
-    private int delete(DeleteQuery deleteQuery, Object params) throws Exception {
+    public int delete(DeleteQuery deleteQuery, Object params) throws Exception {
         return executeQuery(deleteQuery, params);
     }
 
@@ -239,7 +243,7 @@ public class SqlSession implements Closeable {
 
     public <T> T getMapper(Class<T> type) throws Exception {
         var handler =  configuration.getClassMappers().contains(type) ?
-                new DaoHandlerAnnotated(this, configuration) :
+                new DaoHandlerAnnotated(this, type) :
                 new DaoHandler(this, configuration);
         return (T) Proxy.newProxyInstance(
                 ClassLoader.getSystemClassLoader(),

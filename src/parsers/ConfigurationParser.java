@@ -18,6 +18,7 @@ public class ConfigurationParser {
     private Properties properties;
     private final Environment environment;
     private List<String> mapperNames;
+    private Set<Class<?>> classMappers;
 
 
     public ConfigurationParser(InputStream in) throws Exception {
@@ -50,6 +51,7 @@ public class ConfigurationParser {
         this.configuration = parseConfiguration(source);
         this.configuration.setMappers(new HashMap<>());
         parseMappers();
+        this.configuration.setClassMappers(this.classMappers);
         this.configuration.setQueriesWithNamespace();
     }
 
@@ -96,7 +98,7 @@ public class ConfigurationParser {
 
     private void setMapperNames(Node root) throws ParserConfigurationException, ClassNotFoundException {
         this.mapperNames = new ArrayList<>();
-        configuration.setClassMappers(new HashSet<>());
+        this.classMappers = new HashSet<>();
 
         NodeList nodeList = root.getChildNodes();
         for (int i = 0; i < nodeList.getLength(); i++) {
@@ -121,7 +123,7 @@ public class ConfigurationParser {
                 case "class" -> {
                     String className = attribute.getNodeValue();
                     Class<?> mapperClass = Class.forName(className);
-                    configuration.getClassMappers().add(mapperClass);
+                    this.classMappers.add(mapperClass);
                 }
                 default -> throw new ParserConfigurationException(ILLEGAL_ATTRIBUTE + attrName);
             }

@@ -22,5 +22,6 @@
     </environments>
     <mappers>
         <mapper resource='src/mappers/EmployeeMapper.xml'/>
+        <mapper class='mappers.EmployeeMapperAnnotated'/>
     </mappers>
 </configuration>

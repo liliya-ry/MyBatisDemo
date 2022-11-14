@@ -21,22 +21,22 @@ public interface EmployeeMapperAnnotated {
             FROM EMPLOYEES
             WHERE EMPLOYEE_ID = #{employeeId}
             """)
-    public Employee getEmployeeById(Integer employeeId);
+    Employee getEmployeeById(Integer employeeId);
 
     @Select("SELECT * FROM EMPLOYEES")
-    @Results(value = {
-            @Result(id=true, property="employeeId", column="employee_id"),
-            @Result(property="firstName", column="first_name"),
-            @Result(property = "lastName", column = "lastName"),
-            @Result(property="email", column="email"),
-            @Result(property="phone_number", column="phone_number"),
-            @Result(property="hire_date", column="hire_date"),
-            @Result(property="job_id", column="job_id"),
-            @Result(property="salary", column="salary"),
-            @Result(property="manager_id", column="manager_id"),
-            @Result(property="department_id", column="department_id")
-    })
-    public List<Employee> getAllEmployees();
+//    @Results(value = {
+//            @Result(id=true, property="employeeId", column="employee_id"),
+//            @Result(property="firstName", column="first_name"),
+//            @Result(property = "lastName", column = "lastName"),
+//            @Result(property="email", column="email"),
+//            @Result(property="phone_number", column="phone_number"),
+//            @Result(property="hire_date", column="hire_date"),
+//            @Result(property="job_id", column="job_id"),
+//            @Result(property="salary", column="salary"),
+//            @Result(property="manager_id", column="manager_id"),
+//            @Result(property="department_id", column="department_id")
+//    })
+    List<Employee> getAllEmployees();
 
     @Insert("""
             INSERT INTO EMPLOYEES(
@@ -62,7 +62,7 @@ public interface EmployeeMapperAnnotated {
                     #{departmentId})
             """)
     @Options(useGeneratedKeys=true, keyProperty="employeeId")
-    public void insertEmployee(Employee employee);
+    void insertEmployee(Employee employee);
 
     @Update("""
             UPDATE EMPLOYEES
@@ -78,8 +78,9 @@ public interface EmployeeMapperAnnotated {
                 DEPARTMENT_ID = #{departmentId}
             WHERE EMPLOYEE_ID = #{employeeId}
             """)
-    public void updateEmployee(Employee employee);
+    @Options(useGeneratedKeys=true, keyProperty="employeeId")
+    void updateEmployee(Employee employee);
 
     @Delete("DELETE FROM EMPLOYEES WHERE EMPLOYEE_ID=#{employeeId}")
-    public void deleteEmployee(Integer employeeId);
+    void deleteEmployee(Integer employeeId);
 }
