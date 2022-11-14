@@ -32,7 +32,11 @@
         <result property='department_id' column='departmentId'/>
     </resultMap>
 
-    <select id='getAllEmployees' resultMap='EmployeeResult'>
+    <select id='getAllEmployeesFromMap' resultMap='EmployeeResult'>
+        SELECT * FROM EMPLOYEES
+    </select>
+
+    <select id='getAllEmployees' resultType='domain.Employee'>
         SELECT * FROM EMPLOYEES
     </select>
 

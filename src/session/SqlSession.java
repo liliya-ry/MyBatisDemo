@@ -2,13 +2,18 @@ package session;
 
 import dto.Configuration;
 import dto.queries.*;
-import handlers.*;
+import exceptions.TooManyResultsException;
+import handlers.DaoHandler;
 import utility.DatabaseConnectionPool;
 
 import java.io.Closeable;
-import java.lang.reflect.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Proxy;
 import java.sql.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 
 public class SqlSession implements Closeable {
@@ -22,8 +27,33 @@ public class SqlSession implements Closeable {
         this.dcp = dcp;
     }
 
-    //    <E> List<E> selectList(String statement, Object parameter);
-//    <K,V> Map<K,V> selectMap(String statement, Object parameter, String mapKey);
+//    <K,V> Map<K,V> selectMap(String queryId, Object params, String mapId) throws Exception {
+//        SelectQuery selectQuery = (SelectQuery) configuration.getQueryById(queryId);
+//        checkQueryType(selectQuery, Query.QUERY_TYPE.SELECT);
+//        ResultMap resultMap = configuration.getResultMapById(mapId);
+//    }
+
+    public <T> T selectOne(String queryId) throws Exception {
+        SelectQuery selectQuery = (SelectQuery) configuration.getQueryById(queryId);
+        checkQueryType(selectQuery, Query.QUERY_TYPE.SELECT);
+        return selectOne(selectQuery);
+    }
+
+    private <T> T selectOne(SelectQuery selectQuery) throws Exception {
+        String sql = selectQuery.getSql();
+        Class<?> resultType = selectQuery.getResultType();
+        Map<String, Field> fieldsMap = selectQuery.getFieldsMap();
+
+        try (Statement st = conn.createStatement()) {
+            ResultSet rs = st.executeQuery(sql);
+            rs.next();
+            Constructor<?> constructor = resultType.getDeclaredConstructor();
+            T res = getObject(rs, constructor, fieldsMap);
+            manyResultsCheck(rs);
+
+            return res;
+        }
+    }
 
     public <T> T selectOne(String queryId, Object params) throws Exception {
         SelectQuery selectQuery = (SelectQuery) configuration.getQueryById(queryId);
@@ -31,28 +61,30 @@ public class SqlSession implements Closeable {
         return selectOne(selectQuery, params);
     }
 
-    public  <T> T selectOne(SelectQuery selectQuery, Object params) throws Exception {
-        Class<?> paramType = selectQuery.getParameterType();
-        if (!paramType.equals(params.getClass())) {
-            throw new Exception("wrong parameter type");
-        }
-
+    private  <T> T selectOne(SelectQuery selectQuery, Object params) throws Exception {
         String sql = selectQuery.getSql();
-        ArrayList<String> paramNames = (ArrayList<String>) selectQuery.getParamNames();
+        List<String> paramNames = selectQuery.getParamNames();
         Class<?> resultType = selectQuery.getResultType();
-        HashMap<String, Field> fieldsMap = getFieldsMap(resultType);
+        Map<String, Field> resultFieldsMap = selectQuery.getResultFieldsMap();
+        Map<String, Field> fieldsMap = selectQuery.getFieldsMap();
 
         try (PreparedStatement st = conn.prepareStatement(sql)) {
             setParameters(st, params, paramNames, fieldsMap);
             ResultSet rs = st.executeQuery();
             rs.next();
-
             Constructor<?> constructor = resultType.getDeclaredConstructor();
-            T res = getObject(rs, constructor, fieldsMap);
-            if (rs.next()) {
-                throw new IllegalStateException("More than one row in result");
-            }
+            T res = getObject(rs, constructor, resultFieldsMap);
+            manyResultsCheck(rs);
+
             return res;
+        }
+    }
+
+    private void manyResultsCheck(ResultSet rs) throws SQLException {
+        if (rs.next()) {
+            rs.last();
+            int count = rs.getRow();
+            throw new TooManyResultsException("Expected one result (or null) to be returned by selectOne(), but found: " + count);
         }
     }
 
@@ -63,18 +95,39 @@ public class SqlSession implements Closeable {
     }
 
     private <T> List<T> selectList(SelectQuery selectQuery) throws Exception {
-        Class<?> paramType = selectQuery.getParameterType();
+        Class<?> resultType = selectQuery.getResultType();
         String sql = selectQuery.getSql();
-        HashMap<String, Field> fieldsMap = getFieldsMap(paramType);
+        Map<String, Field> resultFieldsMap = selectQuery.getResultFieldsMap();
 
-        try (PreparedStatement st = conn.prepareStatement(sql)) {
-            ResultSet rs = st.executeQuery();
-            Constructor<?> constructor = paramType.getDeclaredConstructor();
-            return getObjectList(rs, constructor, fieldsMap);
+        try (Statement st = conn.createStatement()) {
+            ResultSet rs = st.executeQuery(sql);
+            Constructor<?> constructor = resultType.getDeclaredConstructor();
+            return getObjectList(rs, constructor, resultFieldsMap);
         }
     }
 
-    private <T> List<T> getObjectList(ResultSet rs, Constructor<?> constructor, HashMap<String, Field> fieldsMap) throws Exception {
+    public <T> List<T> selectList(String queryId, Object params) throws Exception {
+        SelectQuery selectQuery = (SelectQuery) configuration.getQueryById(queryId);
+        checkQueryType(selectQuery, Query.QUERY_TYPE.SELECT);
+        return selectList(selectQuery, params);
+    }
+
+    public <T> List<T> selectList(SelectQuery selectQuery, Object params) throws Exception {
+        String sql = selectQuery.getSql();
+        List<String> paramNames = selectQuery.getParamNames();
+        Class<?> resultType = selectQuery.getResultType();
+        Map<String, Field> resultFieldsMap = selectQuery.getResultFieldsMap();
+        Map<String, Field> fieldsMap = selectQuery.getFieldsMap();
+
+        try (PreparedStatement st = conn.prepareStatement(sql)) {
+            setParameters(st, params, paramNames, fieldsMap);
+            ResultSet rs = st.executeQuery();
+            Constructor<?> constructor = resultType.getDeclaredConstructor();
+            return getObjectList(rs, constructor, resultFieldsMap);
+        }
+    }
+
+    private <T> List<T> getObjectList(ResultSet rs, Constructor<?> constructor, Map<String, Field> fieldsMap) throws Exception {
         List<T> result = new ArrayList<>();
         while (rs.next()) {
             T object = getObject(rs, constructor, fieldsMap);
@@ -85,14 +138,21 @@ public class SqlSession implements Closeable {
         return result;
     }
 
-    public int insert(String queryId, Object params) throws Exception {
-        InsertQuery insertQuery;
-        try {
-            insertQuery = (InsertQuery) configuration.getQueryById(queryId);
-        } catch (ClassCastException e) {
-            throw new Exception("Invalid query type");
-        }
+    public int insert(String queryId) throws Exception {
+        InsertQuery insertQuery = (InsertQuery) configuration.getQueryById(queryId);
+        checkQueryType(insertQuery, Query.QUERY_TYPE.INSERT);
+        return insert(insertQuery);
+    }
 
+    private int insert(InsertQuery insertQuery) throws Exception {
+        return insertQuery.isUseGeneratedKeys() ?
+                executeQueryWithGeneratedKeys(insertQuery, insertQuery.getKeyProperty()) :
+                executeQuery(insertQuery);
+    }
+
+    public int insert(String queryId, Object params) throws Exception {
+        InsertQuery insertQuery = (InsertQuery) configuration.getQueryById(queryId);
+        checkQueryType(insertQuery, Query.QUERY_TYPE.INSERT);
         return insert(insertQuery, params);
     }
 
@@ -102,21 +162,34 @@ public class SqlSession implements Closeable {
                 executeQuery(insertQuery, params);
     }
 
-    public int update(String queryId, Object params) throws Exception {
-        UpdateQuery updateQuery;
-        try {
-            updateQuery = (UpdateQuery) configuration.getQueryById(queryId);
-        } catch (ClassCastException e) {
-            throw new Exception("Invalid query type");
-        }
+    public int update(String queryId) throws Exception {
+        UpdateQuery updateQuery = (UpdateQuery) configuration.getQueryById(queryId);
+        checkQueryType(updateQuery, Query.QUERY_TYPE.UPDATE);
+        return update(updateQuery);
+    }
 
+    public int update(String queryId, Object params) throws Exception {
+        UpdateQuery updateQuery = (UpdateQuery) configuration.getQueryById(queryId);
+        checkQueryType(updateQuery, Query.QUERY_TYPE.UPDATE);
         return update(updateQuery, params);
     }
 
-    public int update(UpdateQuery updateQuery, Object params) throws Exception {
+    private int update(UpdateQuery updateQuery) throws Exception {
+        return updateQuery.isUseGeneratedKeys() ?
+                executeQueryWithGeneratedKeys(updateQuery, updateQuery.getKeyProperty()) :
+                executeQuery(updateQuery);
+    }
+
+    private int update(UpdateQuery updateQuery, Object params) throws Exception {
         return updateQuery.isUseGeneratedKeys() ?
                 executeQueryWithGeneratedKeys(updateQuery, params, updateQuery.getKeyProperty()) :
                 executeQuery(updateQuery, params);
+    }
+
+    public int delete(String queryId) throws Exception {
+        DeleteQuery deleteQuery = (DeleteQuery) configuration.getQueryById(queryId);
+        checkQueryType(deleteQuery, Query.QUERY_TYPE.DELETE);
+        return delete(deleteQuery);
     }
 
     public int delete(String queryId, Object params) throws Exception {
@@ -125,7 +198,11 @@ public class SqlSession implements Closeable {
         return delete(deleteQuery, params);
     }
 
-    public int delete(DeleteQuery deleteQuery, Object params) throws Exception {
+    private int delete(DeleteQuery deleteQuery) throws Exception {
+        return executeQuery(deleteQuery);
+    }
+
+    private int delete(DeleteQuery deleteQuery, Object params) throws Exception {
         return executeQuery(deleteQuery, params);
     }
 
@@ -137,15 +214,17 @@ public class SqlSession implements Closeable {
         }
     }
 
-    private int executeQuery(Query query, Object params) throws Exception {
-        Class<?> paramType = query.getParameterType();
-        if (!paramType.equals(params.getClass())) {
-            throw new Exception("wrong parameter type");
-        }
-
+    private int executeQuery(Query query) throws Exception {
         String sql = query.getSql();
-        ArrayList<String> paramNames = (ArrayList<String>) query.getParamNames();
-        HashMap<String, Field> fieldsMap = getFieldsMap(paramType);
+        try (Statement st = conn.createStatement()) {
+            return st.executeUpdate(sql);
+        }
+    }
+
+    private int executeQuery(Query query, Object params) throws Exception {
+        String sql = query.getSql();
+        List<String> paramNames = query.getParamNames();
+        Map<String, Field> fieldsMap = query.getFieldsMap();
 
         try (PreparedStatement st = conn.prepareStatement(sql)) {
             setParameters(st, params, paramNames, fieldsMap);
@@ -153,14 +232,21 @@ public class SqlSession implements Closeable {
         }
     }
 
-    private int executeQueryWithGeneratedKeys(Query query, Object params, String keyProperty) throws Exception {
-        Class<?> paramType = query.getParameterType();
-        if (!paramType.equals(params.getClass())) {
-            throw new Exception("wrong parameter type");
-        }
+    private int executeQueryWithGeneratedKeys(Query query, String keyProperty) throws Exception {
         String sql = query.getSql();
-        ArrayList<String> paramNames = (ArrayList<String>) query.getParamNames();
-        HashMap<String, Field> fieldsMap = getFieldsMap(paramType);
+        try (Statement st = conn.createStatement()) {
+            st.executeUpdate(sql, Statement.RETURN_GENERATED_KEYS);
+            ResultSet rs = st.getGeneratedKeys();
+            rs.next();
+            rs.close();
+            return rs.findColumn(keyProperty);
+        }
+    }
+
+    private int executeQueryWithGeneratedKeys(Query query, Object params, String keyProperty) throws Exception {
+        String sql = query.getSql();
+        List<String> paramNames = query.getParamNames();
+        Map<String, Field> fieldsMap = query.getFieldsMap();
 
         try (PreparedStatement st = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             setParameters(st, params, paramNames, fieldsMap);
@@ -172,7 +258,7 @@ public class SqlSession implements Closeable {
         }
     }
 
-    private void setParameters(PreparedStatement st, Object o, ArrayList<String> fNames, HashMap<String, Field> fieldsMap) throws Exception {
+    private void setParameters(PreparedStatement st, Object o, List<String> fNames, Map<String, Field> fieldsMap) throws Exception {
         if (fNames.size() == 1) {
             st.setObject(1, o);
             return;
@@ -186,19 +272,7 @@ public class SqlSession implements Closeable {
         }
     }
 
-    private <T> HashMap<String, Field> getFieldsMap(Class<T> c) {
-        HashMap<String, Field> fieldsMap = new HashMap<>();
-        Field[] fields = c.getDeclaredFields();
-
-        for (Field f : fields) {
-            String fName = getNormalizedFieldName(f.getName());
-            fieldsMap.put(fName, f);
-        }
-
-        return fieldsMap;
-    }
-
-    private <T> T getObject(ResultSet rs, Constructor<?> constructor, HashMap<String, Field> fieldsMap) throws Exception {
+    private <T> T getObject(ResultSet rs, Constructor<?> constructor, Map<String, Field> fieldsMap) throws Exception {
         T o = (T) constructor.newInstance();
         ResultSetMetaData rsmd = rs.getMetaData();
         int columnCount = rsmd.getColumnCount();
@@ -211,7 +285,13 @@ public class SqlSession implements Closeable {
                 throw new IllegalArgumentException("No such field.");
             }
 
-            Object value = rs.getObject(columnName);
+            Object value;
+            try {
+                value = rs.getObject(columnName);
+            } catch (SQLException e) {
+                return null;
+            }
+
             Field f = fieldsMap.get(normalizedName);
             f.setAccessible(true);
             f.set(o, value);
@@ -237,9 +317,7 @@ public class SqlSession implements Closeable {
     }
 
     public <T> T getMapper(Class<T> type) throws Exception {
-        var handler =  configuration.getClassMappers().contains(type) ?
-                new DaoHandlerAnnotated(this, type) :
-                new DaoHandler(this, configuration);
+        var handler = new DaoHandler(this, configuration);
         return (T) Proxy.newProxyInstance(
                 ClassLoader.getSystemClassLoader(),
                 new Class[]{type}, handler);

@@ -209,7 +209,10 @@ class MapperParser {
 
             String nodeName = node.getNodeName();
             switch (nodeName) {
-                case "id" -> resultId = getResult(node);
+                case "id" -> {
+                    resultId = getResult(node);
+                    results.put(resultId.getColumn(), resultId);
+                }
                 case "result" -> {
                     Result result = getResult(node);
                     results.put(result.getColumn(), result);

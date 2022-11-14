@@ -1,7 +1,11 @@
 package dto.queries;
 
+import java.lang.reflect.Field;
+import java.util.Map;
+
 public class SelectQuery extends Query {
     Class<?> resultType;
+    Map<String, Field> resultFieldsMap;
     String resultMapId;
 
 
@@ -14,17 +18,18 @@ public class SelectQuery extends Query {
         super(queryType, id, parameterType, sql);
         this.resultType = resultType;
         this.resultMapId = resultMapId;
+        this.resultFieldsMap = getFieldsMap(resultType);
     }
 
     public Class<?> getResultType() {
         return resultType;
     }
 
-    @Override
-    public String toString() {
-        return "SelectQuery{" +
-                "resultType=" + resultType +
-                ", resultMapId='" + resultMapId + '\'' +
-                '}';
+    public Map<String, Field> getFieldsMap() {
+        return fieldsMap;
+    }
+
+    public Map<String, Field> getResultFieldsMap() {
+        return resultFieldsMap;
     }
 }

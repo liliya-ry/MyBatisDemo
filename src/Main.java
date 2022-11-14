@@ -1,12 +1,10 @@
 import domain.Employee;
-import mappers.EmployeeMapperAnnotated;
 import session.SqlSession;
 import session.SqlSessionFactory;
 import session.SqlSessionFactoryBuilder;
 
 import java.io.FileInputStream;
-import java.math.BigDecimal;
-import java.sql.Date;
+import java.util.List;
 
 public class Main {
     public static void main(String[] args) throws Exception {
@@ -14,10 +12,12 @@ public class Main {
         FileInputStream fis = new FileInputStream(resource);
         SqlSessionFactory factory = new SqlSessionFactoryBuilder().build(fis);
         SqlSession session = factory.openSession();
-        EmployeeMapperAnnotated mapper = session.getMapper(EmployeeMapperAnnotated.class);
-        Employee e = new Employee("maria", "ivanov", "ivan@abv.bg", "1234", Date.valueOf("2022-10-02"), new BigDecimal(2000), 1, 6, 102);
-        e.employeeId = 543;
-        mapper.deleteEmployee(543);
+        Employee e = session.selectOne("getEmployeeById",100);
+        System.out.println(e);
+        List<Employee> employees = session.selectList("getAllEmployees");
+        for (Employee employee : employees) {
+            System.out.println(employee);
+        }
         session.close();
     }
 }
