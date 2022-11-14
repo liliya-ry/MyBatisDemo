@@ -2,18 +2,14 @@ package session;
 
 import dto.Configuration;
 import dto.queries.*;
-import handlers.DaoHandler;
-import handlers.DaoHandlerAnnotated;
+import handlers.*;
 import utility.DatabaseConnectionPool;
 
 import java.io.Closeable;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Proxy;
+import java.lang.reflect.*;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
+
 
 public class SqlSession implements Closeable {
     private final DatabaseConnectionPool dcp;
@@ -67,8 +63,7 @@ public class SqlSession implements Closeable {
     }
 
     private <T> List<T> selectList(SelectQuery selectQuery) throws Exception {
-        Class<?> paramType = selectQuery.getResultType();
-
+        Class<?> paramType = selectQuery.getParameterType();
         String sql = selectQuery.getSql();
         HashMap<String, Field> fieldsMap = getFieldsMap(paramType);
 

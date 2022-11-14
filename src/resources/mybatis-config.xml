@@ -2,10 +2,6 @@
 <!DOCTYPE configuration>
 <configuration>
     <properties resource='D:\IdeaProjects\MyBatisDemo\src\resources\jdbc.properties'/>
-<!--        <property name='jdbc.driverClassName' value='#{org.mariadb.jdbc.Driver}'/>-->
-<!--        <property name='jdbc.url' value='#{jdbc:mariadb://localhost:3307/HR}'/>-->
-<!--        <property name='jdbc.username' value='#{root}'/>-->
-<!--        <property name='jdbc.password' value='#{1234}'/>-->
     <typeAliases>
         <typeAlias type='domain.Employee' alias='Employee'/>
     </typeAliases>
