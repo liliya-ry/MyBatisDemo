@@ -52,6 +52,7 @@ public class ConfigurationParser {
         this.configuration.setMappers(new HashMap<>());
         parseMappers();
         this.configuration.setClassMappers(this.classMappers);
+        parseClassMappers();
         this.configuration.setQueriesWithNamespace();
     }
 
@@ -311,6 +312,15 @@ public class ConfigurationParser {
         for (String mapperName : mapperNames) {
             Mapper mapper = MapperParser.parseMapper(this.configuration, mapperName);
             this.configuration.getMappers().put(mapper.getNamespace(), mapper);
+        }
+    }
+
+    private void parseClassMappers() throws Exception {
+        for (Class<?> mapperType : classMappers) {
+            AnnotatedMapperParser parser = new AnnotatedMapperParser(mapperType);
+            Mapper mapper = parser.parseMapper();
+            this.configuration.getMappers().put(mapper.getNamespace(), mapper);
+            this.configuration.getClassMappers().add(mapperType);
         }
     }
 

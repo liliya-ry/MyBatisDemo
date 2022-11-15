@@ -2,19 +2,15 @@ package session;
 
 import dto.Configuration;
 import dto.queries.*;
+import exceptions.IbatisException;
 import exceptions.TooManyResultsException;
 import handlers.DaoHandler;
 import utility.DatabaseConnectionPool;
 
 import java.io.Closeable;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Proxy;
+import java.lang.reflect.*;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
+import java.util.*;
 
 public class SqlSession implements Closeable {
     private final DatabaseConnectionPool dcp;
@@ -39,7 +35,7 @@ public class SqlSession implements Closeable {
         return selectOne(selectQuery);
     }
 
-    private <T> T selectOne(SelectQuery selectQuery) throws Exception {
+    <T> T selectOne(SelectQuery selectQuery) throws Exception {
         String sql = selectQuery.getSql();
         Class<?> resultType = selectQuery.getResultType();
         Map<String, Field> fieldsMap = selectQuery.getFieldsMap();
@@ -61,7 +57,7 @@ public class SqlSession implements Closeable {
         return selectOne(selectQuery, params);
     }
 
-    private  <T> T selectOne(SelectQuery selectQuery, Object params) throws Exception {
+     <T> T selectOne(SelectQuery selectQuery, Object params) throws Exception {
         String sql = selectQuery.getSql();
         List<String> paramNames = selectQuery.getParamNames();
         Class<?> resultType = selectQuery.getResultType();
@@ -94,7 +90,7 @@ public class SqlSession implements Closeable {
         return selectList(selectQuery);
     }
 
-    private <T> List<T> selectList(SelectQuery selectQuery) throws Exception {
+    <T> List<T> selectList(SelectQuery selectQuery) throws Exception {
         Class<?> resultType = selectQuery.getResultType();
         String sql = selectQuery.getSql();
         Map<String, Field> resultFieldsMap = selectQuery.getResultFieldsMap();
@@ -112,7 +108,7 @@ public class SqlSession implements Closeable {
         return selectList(selectQuery, params);
     }
 
-    public <T> List<T> selectList(SelectQuery selectQuery, Object params) throws Exception {
+    <T> List<T> selectList(SelectQuery selectQuery, Object params) throws Exception {
         String sql = selectQuery.getSql();
         List<String> paramNames = selectQuery.getParamNames();
         Class<?> resultType = selectQuery.getResultType();
@@ -144,7 +140,7 @@ public class SqlSession implements Closeable {
         return insert(insertQuery);
     }
 
-    private int insert(InsertQuery insertQuery) throws Exception {
+    int insert(InsertQuery insertQuery) throws Exception {
         return insertQuery.isUseGeneratedKeys() ?
                 executeQueryWithGeneratedKeys(insertQuery, insertQuery.getKeyProperty()) :
                 executeQuery(insertQuery);
@@ -156,7 +152,7 @@ public class SqlSession implements Closeable {
         return insert(insertQuery, params);
     }
 
-    private int insert(InsertQuery insertQuery, Object params) throws Exception {
+    int insert(InsertQuery insertQuery, Object params) throws Exception {
         return insertQuery.isUseGeneratedKeys() ?
                 executeQueryWithGeneratedKeys(insertQuery, params, insertQuery.getKeyProperty()) :
                 executeQuery(insertQuery, params);
@@ -174,35 +170,35 @@ public class SqlSession implements Closeable {
         return update(updateQuery, params);
     }
 
-    private int update(UpdateQuery updateQuery) throws Exception {
+    int update(UpdateQuery updateQuery) throws Exception {
         return updateQuery.isUseGeneratedKeys() ?
                 executeQueryWithGeneratedKeys(updateQuery, updateQuery.getKeyProperty()) :
                 executeQuery(updateQuery);
     }
 
-    private int update(UpdateQuery updateQuery, Object params) throws Exception {
+    int update(UpdateQuery updateQuery, Object params) throws Exception {
         return updateQuery.isUseGeneratedKeys() ?
                 executeQueryWithGeneratedKeys(updateQuery, params, updateQuery.getKeyProperty()) :
                 executeQuery(updateQuery, params);
     }
 
     public int delete(String queryId) throws Exception {
-        DeleteQuery deleteQuery = (DeleteQuery) configuration.getQueryById(queryId);
+        Query deleteQuery = configuration.getQueryById(queryId);
         checkQueryType(deleteQuery, Query.QUERY_TYPE.DELETE);
         return delete(deleteQuery);
     }
 
     public int delete(String queryId, Object params) throws Exception {
-        DeleteQuery deleteQuery = (DeleteQuery) configuration.getQueryById(queryId);
+        Query deleteQuery = configuration.getQueryById(queryId);
         checkQueryType(deleteQuery, Query.QUERY_TYPE.DELETE);
         return delete(deleteQuery, params);
     }
 
-    private int delete(DeleteQuery deleteQuery) throws Exception {
+    int delete(Query deleteQuery) throws Exception {
         return executeQuery(deleteQuery);
     }
 
-    private int delete(DeleteQuery deleteQuery, Object params) throws Exception {
+    int delete(Query deleteQuery, Object params) throws Exception {
         return executeQuery(deleteQuery, params);
     }
 
@@ -316,8 +312,12 @@ public class SqlSession implements Closeable {
         return sb.toString();
     }
 
-    public <T> T getMapper(Class<T> type) throws Exception {
-        var handler = new DaoHandler(this, configuration);
+    public <T> T getMapper(Class<T> type) {
+        if (!configuration.getClassMappers().contains(type)) {
+            throw new IbatisException("Type interface " + type +" is not known to the MapperRegistry");
+        }
+
+        var handler = new DaoHandler(this, configuration, type);
         return (T) Proxy.newProxyInstance(
                 ClassLoader.getSystemClassLoader(),
                 new Class[]{type}, handler);

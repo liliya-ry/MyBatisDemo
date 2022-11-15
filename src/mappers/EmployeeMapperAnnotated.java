@@ -1,12 +1,13 @@
 package mappers;
 
 import domain.Employee;
-import handlers.annotations.*;
+import annotations.*;
 
 import java.util.List;
 
+@Cache(memoryStoreEvictionPolicy = "LRU", maxEntriesLocalHeap = 100, timeToLiveSeconds = 3600)
 public interface EmployeeMapperAnnotated {
-    @Select("""
+    @Select(value = """
             SELECT
                     employee_id,
                     first_name,
@@ -20,22 +21,22 @@ public interface EmployeeMapperAnnotated {
                     department_id
             FROM EMPLOYEES
             WHERE EMPLOYEE_ID = #{employeeId}
-            """)
-    Employee getEmployeeById(Integer employeeId);
+            """, useCaching = true)
+    Employee getEmployeeById(int employeeId);
 
-    @Select("SELECT * FROM EMPLOYEES")
-//    @Results(value = {
-//            @Result(id=true, property="employeeId", column="employee_id"),
-//            @Result(property="firstName", column="first_name"),
-//            @Result(property = "lastName", column = "lastName"),
-//            @Result(property="email", column="email"),
-//            @Result(property="phone_number", column="phone_number"),
-//            @Result(property="hire_date", column="hire_date"),
-//            @Result(property="job_id", column="job_id"),
-//            @Result(property="salary", column="salary"),
-//            @Result(property="manager_id", column="manager_id"),
-//            @Result(property="department_id", column="department_id")
-//    })
+    @Select(value = "SELECT * FROM EMPLOYEES", useCaching = true)
+    @Results(value = {
+            @Result(id=true, property="employeeId", column="employee_id"),
+            @Result(property="firstName", column="first_name"),
+            @Result(property = "lastName", column = "lastName"),
+            @Result(property="email", column="email"),
+            @Result(property="phone_number", column="phone_number"),
+            @Result(property="hire_date", column="hire_date"),
+            @Result(property="job_id", column="job_id"),
+            @Result(property="salary", column="salary"),
+            @Result(property="manager_id", column="manager_id"),
+            @Result(property="department_id", column="department_id")
+    })
     List<Employee> getAllEmployees();
 
     @Insert("""
@@ -61,7 +62,7 @@ public interface EmployeeMapperAnnotated {
                     #{managerId},
                     #{departmentId})
             """)
-    @Options(useGeneratedKeys=true, keyProperty="employeeId")
+    @Options(useGeneratedKeys=true, keyProperty="employeeId", flushCache = true)
     void insertEmployee(Employee employee);
 
     @Update("""
@@ -82,5 +83,6 @@ public interface EmployeeMapperAnnotated {
     void updateEmployee(Employee employee);
 
     @Delete("DELETE FROM EMPLOYEES WHERE EMPLOYEE_ID=#{employeeId}")
-    void deleteEmployee(Integer employeeId);
+    @Options(flushCache = true)
+    void deleteEmployee(int employeeId);
 }

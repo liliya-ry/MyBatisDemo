@@ -1,10 +1,10 @@
 import domain.Employee;
+import mappers.EmployeeMapperAnnotated;
 import session.SqlSession;
 import session.SqlSessionFactory;
 import session.SqlSessionFactoryBuilder;
 
 import java.io.FileInputStream;
-import java.util.List;
 
 public class Main {
     public static void main(String[] args) throws Exception {
@@ -12,12 +12,9 @@ public class Main {
         FileInputStream fis = new FileInputStream(resource);
         SqlSessionFactory factory = new SqlSessionFactoryBuilder().build(fis);
         SqlSession session = factory.openSession();
-        Employee e = session.selectOne("getEmployeeById",100);
+        EmployeeMapperAnnotated mapper = session.getMapper(EmployeeMapperAnnotated.class);
+        Employee e = mapper.getEmployeeById(544);
         System.out.println(e);
-        List<Employee> employees = session.selectList("getAllEmployees");
-        for (Employee employee : employees) {
-            System.out.println(employee);
-        }
         session.close();
     }
 }

@@ -3,8 +3,12 @@ package parsers;
 import dto.*;
 import dto.queries.*;
 import org.w3c.dom.*;
+import utility.FifoCache;
+import utility.GenerationalCache;
+
 import javax.xml.parsers.*;
 import java.io.File;
+import java.lang.reflect.Constructor;
 import java.util.*;
 
 class MapperParser {
@@ -32,6 +36,7 @@ class MapperParser {
         String namespace = getAttributeValue(mapperNode, "namespace");
         Map<String, Query> queries = new HashMap<>();
         Map<String, ResultMap> resultMaps = new HashMap<>();
+        int cacheIndex = -1;
 
         NodeList nodeList = mapperNode.getChildNodes();
         for (int i = 0; i < nodeList.getLength(); i++) {
@@ -43,6 +48,7 @@ class MapperParser {
 
             String nodeName = node.getNodeName();
             switch (nodeName) {
+                case "cache" -> {cacheIndex = i;}
                 case "resultMap" -> {
                     ResultMap resultMap = getResultMap(node);
                     resultMaps.put(resultMap.getId(), resultMap);
@@ -56,7 +62,74 @@ class MapperParser {
             }
         }
 
-        return new Mapper(namespace, queries, resultMaps);
+        Node cacheNode = nodeList.item(cacheIndex);
+        Map<String, utility.Cache<Object, Object>> caches = parseCaches(cacheNode, queries);
+
+        return new Mapper(namespace, queries, resultMaps, caches);
+    }
+
+    private static Map<String, utility.Cache<Object, Object>> parseCaches(Node cacheNode, Map<String, Query> queries) throws Exception {
+        Properties properties = new Properties();
+
+        NodeList nodeList = cacheNode.getChildNodes();
+        for (int i = 0; i < nodeList.getLength(); i++) {
+            Node node = nodeList.item(i);
+
+            if (node.getNodeType() != Node.ELEMENT_NODE) {
+                continue;
+            }
+
+            String nodeName = node.getNodeName();
+            switch (nodeName) {
+                case "property" -> setProperty(properties, node);
+                default -> throw new ParserConfigurationException(ILLEGAL_ELEMENT + node);
+            }
+        }
+
+        return createCaches(properties, queries);
+    }
+
+    private static void setProperty(Properties properties, Node node) {
+        NamedNodeMap attributes = node.getAttributes();
+        Node nameNode = attributes.getNamedItem("name");
+        String name = nameNode.getNodeValue();
+        Node valueNode = attributes.getNamedItem("value");
+        String value = valueNode.getNodeValue();
+        properties.setProperty(name, value);
+    }
+
+    private static Map<String, utility.Cache<Object, Object>> createCaches(Properties properties, Map<String, Query> queries) throws Exception {
+        String eviction = properties.getProperty("memoryStoreEvictionPolicy");
+        String sizeStr = properties.getProperty("maxEntriesLocalHeap");
+        int size = Integer.parseInt(sizeStr);
+        String flushIntervalStr = properties.getProperty("timeToLiveSeconds");
+        long flushInterval = Long.parseLong(flushIntervalStr);
+
+        Class<?> cacheType = switch (eviction) {
+            case "FIFO" -> FifoCache.class;
+            case "LRU" -> GenerationalCache.class;
+            default -> throw new Exception("Illegal cache type");
+        };
+
+        Map<String, utility.Cache<Object, Object>> caches = new HashMap<>();
+        Constructor<?> cacheConstructor = cacheType.getDeclaredConstructor(int.class, long.class);
+
+        for (Map.Entry<String, Query> queryEntry : queries.entrySet()) {
+            Query query = queryEntry.getValue();
+            Query.QUERY_TYPE queryType = query.getQueryType();
+            if (!queryType.equals(Query.QUERY_TYPE.SELECT)) {
+                continue;
+            }
+
+            SelectQuery selectQuery = (SelectQuery) query;
+            boolean useCache = selectQuery.isUseCaching();
+            if (useCache) {
+                utility.Cache<Object, Object> cache = (utility.Cache<Object, Object>) cacheConstructor.newInstance(size, flushInterval);
+                caches.put(query.getId(), cache);
+            }
+        }
+
+        return caches;
     }
 
     private static Query getQueryByType(Node queryNode, String type) throws Exception {
@@ -72,6 +145,7 @@ class MapperParser {
     private static Query getQuery(Node queryNode, Query.QUERY_TYPE queryType) throws Exception {
         String id = null;
         Class<?> paramType = null;
+        boolean flushCache = false;
 
         NamedNodeMap attributes = queryNode.getAttributes();
         for (int i = 0; i < attributes.getLength(); i++) {
@@ -80,13 +154,17 @@ class MapperParser {
             switch (attributeName) {
                 case "id" -> id = getAttribute(attribute, "id");
                 case "parameterType" -> paramType = getClassByAttribute(attribute, "parameterType");
+                case "flushCache" -> {
+                    String flush = getAttribute(attribute, "flushCache");
+                    flushCache = Boolean.parseBoolean(flush);
+                }
                 default -> throw new ParserConfigurationException(ILLEGAL_ATTRIBUTE + attributeName);
             }
         }
 
         String sql = queryNode.getTextContent();
 
-        return new Query(queryType, id, paramType, sql);
+        return new DeleteQuery(queryType, id, paramType, sql, flushCache);
     }
 
     private static Query getInsertUpdateQuery(Node queryNode) throws Exception {
@@ -94,6 +172,7 @@ class MapperParser {
         Class<?> paramType = null;
         boolean useGeneratedKeys = false;
         String keyProperty = null;
+        boolean flushCache = false;
 
         NamedNodeMap attributes = queryNode.getAttributes();
         for (int i = 0; i < attributes.getLength(); i++) {
@@ -107,13 +186,17 @@ class MapperParser {
                     useGeneratedKeys = Boolean.parseBoolean(keysString);
                 }
                 case "keyProperty" -> keyProperty = getAttribute(attribute, "keyProperty");
+                case "flushCache" -> {
+                    String flush = getAttribute(attribute, "flushCache");
+                    flushCache = Boolean.parseBoolean(flush);
+                }
                 default -> throw new ParserConfigurationException(ILLEGAL_ATTRIBUTE + attributeName);
             }
         }
 
         String sql = queryNode.getTextContent();
 
-        return new InsertQuery(Query.QUERY_TYPE.INSERT, id, paramType, sql, useGeneratedKeys, keyProperty);
+        return new InsertQuery(Query.QUERY_TYPE.INSERT, id, paramType, sql, useGeneratedKeys, keyProperty, flushCache);
     }
 
     private static Query getSelectQuery(Node queryNode) throws Exception {
@@ -121,6 +204,7 @@ class MapperParser {
         Class<?> paramType = null;
         Class<?> resultType = null;
         String resultMapId = null;
+        boolean useCaching = false;
 
         NamedNodeMap attributes = queryNode.getAttributes();
         for (int i = 0; i < attributes.getLength(); i++) {
@@ -134,13 +218,17 @@ class MapperParser {
                     resultType = ResultMap.class;
                     resultMapId = getAttribute(attribute, "resultMap");
                 }
+                case "useCaching" -> {
+                    String caching = getAttribute(attribute, "useCaching");
+                    useCaching = Boolean.parseBoolean(caching);
+                }
                 default -> throw new ParserConfigurationException(ILLEGAL_ATTRIBUTE + attributeName);
             }
         }
 
         String sql = queryNode.getTextContent();
 
-        return new SelectQuery(Query.QUERY_TYPE.SELECT, id, paramType, sql, resultType, resultMapId);
+        return new SelectQuery(Query.QUERY_TYPE.SELECT, id, paramType, sql, resultType, resultMapId, useCaching);
     }
 
     private static final Map<String, Class<?>> WRAPPER_CLASSES = Map.of(

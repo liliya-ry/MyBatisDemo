@@ -7,6 +7,7 @@ public class SelectQuery extends Query {
     Class<?> resultType;
     Map<String, Field> resultFieldsMap;
     String resultMapId;
+    boolean useCaching;
 
 
     public SelectQuery(QUERY_TYPE queryType,
@@ -14,11 +15,13 @@ public class SelectQuery extends Query {
                        Class<?> parameterType,
                        String sql,
                        Class<?> resultType,
-                       String resultMapId) {
+                       String resultMapId,
+                       boolean useCaching) {
         super(queryType, id, parameterType, sql);
         this.resultType = resultType;
         this.resultMapId = resultMapId;
         this.resultFieldsMap = getFieldsMap(resultType);
+        this.useCaching = useCaching;
     }
 
     public Class<?> getResultType() {
@@ -31,5 +34,9 @@ public class SelectQuery extends Query {
 
     public Map<String, Field> getResultFieldsMap() {
         return resultFieldsMap;
+    }
+
+    public boolean isUseCaching() {
+        return useCaching;
     }
 }

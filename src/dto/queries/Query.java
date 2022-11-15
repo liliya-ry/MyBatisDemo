@@ -40,6 +40,9 @@ public class Query {
 
     protected <T> HashMap<String, Field> getFieldsMap(Class<T> c) {
         HashMap<String, Field> fieldsMap = new HashMap<>();
+        if (c == null) {
+            return null;
+        }
         Field[] fields = c.getDeclaredFields();
 
         for (Field f : fields) {

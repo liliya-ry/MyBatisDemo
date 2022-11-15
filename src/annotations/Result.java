@@ -1,4 +1,4 @@
-package handlers.annotations;
+package annotations;
 
 public @interface Result {
     boolean id() default false;

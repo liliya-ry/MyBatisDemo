@@ -2,8 +2,13 @@
 <!DOCTYPE mapper>
 
 <mapper namespace='mappers.EmployeeMapper'>
+    <cache>
+        <property name="timeToLiveSeconds" value="3600"/>
+        <property name="maxEntriesLocalHeap" value="1000"/>
+        <property name="memoryStoreEvictionPolicy" value="LRU"/>
+    </cache>
 
-    <select id='getEmployeeById' parameterType='int' resultType='domain.Employee'>
+    <select id='getEmployeeById' parameterType='int' resultType='domain.Employee' useCaching='true'>
         SELECT
         employee_id,
         first_name,
